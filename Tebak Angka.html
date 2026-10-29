@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tebak Angka</title>
+<style>
+:root{
+  --bg:#f3f7f2; --card:#ffffff; --ink:#1d2b24; --muted:#6a7a72;
+  --accent:#2f9e6e; --accent-ink:#ffffff; --hot:#e8743b; --cold:#3b82c4; --line:#d9e4dc;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121a16; --card:#1b2621; --ink:#e6f0ea; --muted:#92a69b;
+    --accent:#3fbf88; --accent-ink:#08150f; --hot:#f0905a; --cold:#6aa7e0; --line:#2b3a33;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121a16; --card:#1b2621; --ink:#e6f0ea; --muted:#92a69b;
+  --accent:#3fbf88; --accent-ink:#08150f; --hot:#f0905a; --cold:#6aa7e0; --line:#2b3a33;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Nunito","Segoe UI",system-ui,sans-serif;
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px;
+}
+.card{
+  width:100%; max-width:420px; background:var(--card);
+  border:1px solid var(--line); border-radius:20px; padding:28px 24px; text-align:center;
+}
+h1{margin:0 0 6px; font-size:1.7rem}
+.sub{margin:0 0 20px; color:var(--muted)}
+.hint{
+  min-height:3.2em; font-size:1.15rem; font-weight:700; margin:8px 0 16px;
+  display:flex; align-items:center; justify-content:center;
+}
+.hint.hot{color:var(--hot)} .hint.cold{color:var(--cold)} .hint.win{color:var(--accent)}
+.row{display:flex; gap:8px}
+input{
+  flex:1; min-width:0; font:inherit; font-size:1.3rem; text-align:center; padding:12px;
+  border:2px solid var(--line); border-radius:12px; background:var(--bg); color:var(--ink);
+}
+input:focus-visible,button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+button{
+  font:inherit; font-weight:800; padding:12px 18px; border:0; border-radius:12px;
+  background:var(--accent); color:var(--accent-ink); cursor:pointer;
+}
+button:disabled{opacity:.5; cursor:not-allowed}
+button.ghost{background:transparent; color:var(--ink); border:2px solid var(--line); margin-top:16px; width:100%}
+.stats{display:flex; justify-content:space-between; margin-top:20px; color:var(--muted); font-size:.95rem}
+.history{margin-top:14px; display:flex; flex-wrap:wrap; gap:6px; justify-content:center; min-height:2em}
+.chip{padding:4px 10px; border-radius:999px; background:var(--bg); border:1px solid var(--line); font-size:.9rem}
+.chip.hi{border-color:var(--hot)} .chip.lo{border-color:var(--cold)}
+@media (prefers-reduced-motion:no-preference){ .shake{animation:shake .3s} }
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+</style>
+</head>
+<body>
+<main class="card" id="card">
+  <h1>Tebak Angka 🎯</h1>
+  <p class="sub">Gw lagi mikirin angka 1 sampai 100. Tebak dong!</p>
+
+  <div class="hint" id="hint" aria-live="polite">Masukin tebakan lo di bawah.</div>
+
+  <div class="row">
+    <input id="guess" type="number" inputmode="numeric" min="1" max="100" placeholder="1 - 100" aria-label="Tebakan">
+    <button id="go">Tebak</button>
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <div class="stats">
+    <span>Percobaan: <b id="tries">0</b></span>
+    <span>Rekor: <b id="best">-</b></span>
+  </div>
+
+  <button class="ghost" id="reset">Main lagi</button>
+</main>
+
+<script>
+(function(){
+  var secret, tries, over, best = null;
+  var $ = function(id){ return document.getElementById(id); };
+  var input = $("guess"), go = $("go"), hint = $("hint"), hist = $("history");
+
+  function setHint(text, cls){ hint.textContent = text; hint.className = "hint " + (cls || ""); }
+
+  function start(){
+    secret = Math.floor(Math.random() * 100) + 1;
+    tries = 0; over = false;
+    $("tries").textContent = 0;
+    hist.innerHTML = "";
+    setHint("Masukin tebakan lo di bawah.");
+    input.value = ""; input.disabled = false; go.disabled = false;
+    input.focus();
+  }
+
+  function guess(){
+    if (over) return;
+    var n = parseInt(input.value, 10);
+    if (isNaN(n) || n < 1 || n > 100){
+      setHint("Isi angka antara 1 sampai 100 ya.", "hot");
+      $("card").classList.remove("shake"); void $("card").offsetWidth; $("card").classList.add("shake");
+      return;
+    }
+    tries++; $("tries").textContent = tries;
+    var chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = n;
+
+    if (n === secret){
+      setHint("🎉 Bener! Angkanya " + secret + ". Lo butuh " + tries + " percobaan.", "win");
+      over = true; input.disabled = true; go.disabled = true;
+      if (best === null || tries < best){ best = tries; $("best").textContent = best; }
+    } else if (n < secret){
+      setHint("Kurang gede, naikin lagi ⬆️", "cold"); chip.classList.add("lo");
+    } else {
+      setHint("Kegedean, turunin dikit ⬇️", "hot"); chip.classList.add("hi");
+    }
+    hist.appendChild(chip);
+    input.value = "";
+    if (!over) input.focus();
+  }
+
+  go.addEventListener("click", guess);
+  input.addEventListener("keydown", function(e){ if (e.key === "Enter") guess(); });
+  $("reset").addEventListener("click", start);
+  start();
+})();
+</script>
+</body>
+</html>
